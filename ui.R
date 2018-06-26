@@ -19,27 +19,15 @@ dashboardPage(
 
     dashboardBody(
 
+        useShinyjs(),
+
+        tags$head(
+            tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
+        ),
+
         tabItems(
             tabItem(tabName = "menu_add_recipe",
-
-                    box(title = "New Recipe",
-                        textInput("new_title", "TITLE",
-                                  placeholder = "Title"),
-                        fluidRow(
-                            column(width = 6,
-                                   textInput("new_prep_time", "PREPARATION TIME",
-                                             placeholder = "25 minutes")
-                            ),
-                            column(width = 6,
-                                   textInput("new_yield", "SERVINGS",
-                                             placeholder = "4 cups")
-                            )
-                        )
-                        # checkboxGroupInput("new_tags"),
-                        # list d'ingrédients
-                        # instructions
-                        # photos
-                    )
+                    fluidRow(uiOutput("ui_new_recipe"))
             )
         )
 

@@ -108,6 +108,12 @@ Version: 0.7.0
 Hash: 5b865adc8fe7461ccc7a257f600112f8
 Requires: htmltools, shiny
 
+Package: shinyjs
+Source: CRAN
+Version: 1.0
+Hash: ea95f751025e50227a96100be35e970b
+Requires: digest, htmltools, jsonlite, shiny
+
 Package: sourcetools
 Source: CRAN
 Version: 0.1.7
