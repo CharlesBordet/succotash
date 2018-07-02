@@ -7,7 +7,7 @@ function(input, output, session) {
     # ------ Reactive ---------------------------------------------------------
 
     values <- reactiveValues(
-        tags = readLines("./data/tags.txt")
+        tags = dbGetQuery(db, "SELECT * FROM tags")
     )
 
     # ------ UI ---------------------------------------------------------------
@@ -30,7 +30,7 @@ function(input, output, session) {
             ),
             div(style = "width: 40%; margin-right: 7px;", class = "inner",
                 selectInput("new_tags", "TAGS", multiple = TRUE,
-                            choices = values$tags)),
+                            choices = sort(values$tags$tag))),
             div(class = "inner", style = "width: 5%;",
                 actionLink("new_tags_add1",
                            label = img(src = "add.png",
@@ -72,30 +72,37 @@ function(input, output, session) {
 
     # ADD TAGS LOGIC
     observeEvent(input$new_tags_add1, {
-        hide("new_tags_add1")
-        show("new_tags_add2")
-        show("new_tags_input")
-        show("new_tags_submit")
+        shinyjs::hide("new_tags_add1")
+        shinyjs::show("new_tags_add2")
+        shinyjs::show("new_tags_input")
+        shinyjs::show("new_tags_submit")
     })
 
     observeEvent(input$new_tags_add2, {
-        show("new_tags_add1")
-        hide("new_tags_add2")
-        hide("new_tags_input")
-        hide("new_tags_submit")
+        shinyjs::show("new_tags_add1")
+        shinyjs::hide("new_tags_add2")
+        shinyjs::hide("new_tags_input")
+        shinyjs::hide("new_tags_submit")
     })
 
     # SAVE NEW TAG
     observeEvent(input$new_tags_submit, {
-        values$tags <- sort(unique(c(values$tags, input$new_tags_input)))
-        writeLines(values$tags, "./data/tags.txt")
+        browser()
+        if (!input$new_tags_input %in% values$tags$tag) {
+            values$tags <- rbind(values$tags,
+                                 data.frame(ID = max(values$tags$ID, 0) + 1,
+                                            tag = input$new_tags_input))
+        }
+        dbWriteTable(db, name = "tags", value = values$tags,
+                     overwrite = TRUE)
     })
 
     # DELETE TAG
     observeEvent(input$remove_tags_submit, {
         selected_tags <- input$list_tags
         values$tags <- setdiff(values$tags, selected_tags)
-        writeLines(values$tags, "./data/tags.txt")
+        dbWriteTable(db, name = "tags", value = values$tags,
+                     overwrite = TRUE)
     })
 
     # SAVE NEW RECIPE
