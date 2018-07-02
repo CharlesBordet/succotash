@@ -15,7 +15,7 @@ dashboardPage(
             menuItem("Add new recipe", tabName = "menu_add_recipe",
                      icon = icon("plus")),
             menuItem("Administration", tabName = "admin",
-                     icon = icon("admin"),
+                     icon = icon("user"),
                      menuSubItem("Tags", tabName = "admin_tags"),
                      menuSubItem("Ingredients", tabName = "admin_ingredients")
             )
@@ -33,6 +33,12 @@ dashboardPage(
         tabItems(
             tabItem(tabName = "menu_add_recipe",
                     fluidRow(uiOutput("ui_new_recipe"))
+            )
+        ),
+
+        tabItems(
+            tabItem(tabName = "admin_tags",
+                    fluidRow(uiOutput("ui_edit_tags"))
             )
         )
 

@@ -61,6 +61,15 @@ function(input, output, session) {
         )
     })
 
+    # EDIT TAGS
+    output$ui_edit_tags <- renderUI({
+        box(title = "Edit Tags",
+            selectInput("list_tags", "TAGS", multiple = TRUE,
+                        choices = values$tags),
+            actionButton("remove_tags_submit", "Delete Tags")
+        )
+    })
+
     # ADD TAGS LOGIC
     observeEvent(input$new_tags_add1, {
         hide("new_tags_add1")
@@ -79,6 +88,13 @@ function(input, output, session) {
     # SAVE NEW TAG
     observeEvent(input$new_tags_submit, {
         values$tags <- sort(unique(c(values$tags, input$new_tags_input)))
+        writeLines(values$tags, "./data/tags.txt")
+    })
+
+    # DELETE TAG
+    observeEvent(input$remove_tags_submit, {
+        selected_tags <- input$list_tags
+        values$tags <- setdiff(values$tags, selected_tags)
         writeLines(values$tags, "./data/tags.txt")
     })
 
