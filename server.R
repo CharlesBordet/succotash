@@ -7,7 +7,7 @@ function(input, output, session) {
     # ------ Reactive ---------------------------------------------------------
 
     values <- reactiveValues(
-        tags = dbGetQuery(db, "SELECT * FROM tags")
+        tags = dbGetQuery(db, "SELECT * FROM tags") %>% data.table
     )
 
     # ------ UI ---------------------------------------------------------------
@@ -65,7 +65,7 @@ function(input, output, session) {
     output$ui_edit_tags <- renderUI({
         box(title = "Edit Tags",
             selectInput("list_tags", "TAGS", multiple = TRUE,
-                        choices = values$tags),
+                        choices = values$tags$tag),
             actionButton("remove_tags_submit", "Delete Tags")
         )
     })
@@ -87,7 +87,6 @@ function(input, output, session) {
 
     # SAVE NEW TAG
     observeEvent(input$new_tags_submit, {
-        browser()
         if (!input$new_tags_input %in% values$tags$tag) {
             values$tags <- rbind(values$tags,
                                  data.frame(ID = max(values$tags$ID, 0) + 1,
@@ -99,8 +98,7 @@ function(input, output, session) {
 
     # DELETE TAG
     observeEvent(input$remove_tags_submit, {
-        selected_tags <- input$list_tags
-        values$tags <- setdiff(values$tags, selected_tags)
+        values$tags <- values$tags[!tag %in% input$list_tags]
         dbWriteTable(db, name = "tags", value = values$tags,
                      overwrite = TRUE)
     })
