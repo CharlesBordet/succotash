@@ -1,4 +1,5 @@
 
+library(aws.s3)
 library(sqldf)
 library(shiny)
 library(shinyjs)
@@ -8,6 +9,7 @@ library(rhandsontable)
 
 options(stringsAsFactors = FALSE)
 
+# DATABASE CONNEXION
 db <- dbConnect(SQLite(), dbname = "succotash.sqlite")
 # https://www.r-bloggers.com/r-and-sqlite-part-1/
 
@@ -20,6 +22,9 @@ if (!"tags" %in% db_tables) {
                    ")")
     dbSendQuery(db, query)
 }
+
+# S3 CONNEXION
+s3 <- get_bucket(bucket = "succotash-shiny")
 
 onStop(function() {
     dbDisconnect(db)
