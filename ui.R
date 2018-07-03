@@ -31,6 +31,12 @@ dashboardPage(
         ),
 
         tabItems(
+            tabItem(tabName = "menu_recipes",
+                    fluidRow(uiOutput("ui_table_recipes"))
+            )
+        ),
+
+        tabItems(
             tabItem(tabName = "menu_add_recipe",
                     fluidRow(uiOutput("ui_new_recipe"))
             )
