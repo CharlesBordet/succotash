@@ -4,3 +4,4 @@
 packrat/lib*/
 packrat/src/
 *.Rproj
+*.sqlite

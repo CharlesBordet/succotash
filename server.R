@@ -4,10 +4,11 @@ function(input, output, session) {
     library(data.table)
     library(magrittr)
 
-    # ------ Reactive ---------------------------------------------------------
+    # ------ REACTIVE ---------------------------------------------------------
 
     values <- reactiveValues(
-        tags = dbGetQuery(db, "SELECT * FROM tags") %>% data.table
+        tags = dbGetQuery(db, "SELECT * FROM tags") %>% data.table,
+        recipes = dbGetQuery(db, "SELECT * FROM recipes") %>% data.table
     )
 
     # ------ UI ---------------------------------------------------------------
@@ -24,7 +25,7 @@ function(input, output, session) {
                                  placeholder = "25 minutes")
                 ),
                 column(width = 6,
-                       textInput("new_yield", "SERVINGS",
+                       textInput("new_yield", "YIELD",
                                  placeholder = "4 cups")
                 )
             ),
@@ -60,6 +61,8 @@ function(input, output, session) {
                          style = "background: lightgreen")
         )
     })
+
+    # ------ TAGS -------------------------------------------------------------
 
     # EDIT TAGS
     output$ui_edit_tags <- renderUI({
@@ -103,8 +106,29 @@ function(input, output, session) {
                      overwrite = TRUE)
     })
 
+    # ------ RECIPES ----------------------------------------------------------
+
     # SAVE NEW RECIPE
     observeEvent(input$new_submit, {
+        browser()
+        filename <- paste0(gsub("-| |:", "", substr(Sys.time(), 1, 20)),
+                           "-", input$new_picture$name)
+        put_object(input$new_picture$datapath,
+                   filename,
+                   bucket = "succotash-shiny",
+                   acl = "public-read")
+        url <- paste0("https://s3.eu-west-3.amazonaws.com/succotash-shiny/",
+                      filename)
+        df <- data.table(ID = max(values$recipes$ID, 0) + 1,
+                         title = input$new_title,
+                         prep_time = input$new_prep_time,
+                         yield = input$new_yield,
+                         ingredients = input$new_ingredients,
+                         instructions = input$new_instructions,
+                         picture = url)
+        values$recipes <- rbind(values$recipes, df)
+        dbWriteTable(db, name = "recipes", value = df,
+                     append = TRUE)
 
     })
 

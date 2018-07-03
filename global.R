@@ -22,11 +22,24 @@ if (!"tags" %in% db_tables) {
                    ")")
     dbSendQuery(db, query)
 }
+if (!"recipes" %in% db_tables) {
+    query <- paste("CREATE TABLE recipes",
+                   paste("(ID INTEGER NOT NULL PRIMARY KEY",
+                         "title VARCHAR(255)",
+                         "prep_time VARCHAR(255)",
+                         "yield VARCHAR(255)",
+                         "ingredients TEXT",
+                         "instructions TEXT",
+                         "picture VARCHAR(255)",
+                         sep = ", "),
+                   ")")
+    dbSendQuery(db, query)
+}
+
+onStop(function() {
+    dbDisconnect(db)
+})
 
 # S3 CONNEXION
 s3 <- get_bucket(bucket = "succotash-shiny")
 
-onStop(function() {
-    dbDisconnect(db)
-
-})
