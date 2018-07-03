@@ -10,7 +10,6 @@ options(stringsAsFactors = FALSE)
 
 # DATABASE CONNEXION
 db <- dbConnect(SQLite(), dbname = "succotash.sqlite")
-# https://www.r-bloggers.com/r-and-sqlite-part-1/
 
 db_tables <- dbListTables(db)
 if (!"tags" %in% db_tables) {
@@ -19,7 +18,8 @@ if (!"tags" %in% db_tables) {
                          "tag VARCHAR(255)",
                          sep = ", "),
                    ")")
-    dbSendQuery(db, query)
+    rs <- dbSendQuery(db, query)
+    dbClearResults(rs)
 }
 if (!"recipes" %in% db_tables) {
     query <- paste("CREATE TABLE recipes",
@@ -32,7 +32,20 @@ if (!"recipes" %in% db_tables) {
                          "picture VARCHAR(255)",
                          sep = ", "),
                    ")")
-    dbSendQuery(db, query)
+    rs <- dbSendQuery(db, query)
+    dbClearResults(rs)
+}
+if (!"tags_recipes" %in% db_tables) {
+    query <- paste("CREATE TABLE tags_recipes",
+                   paste("(tag_id INTEGER NOT NULL",
+                         "recipe_id INTEGER NOT NULL",
+                         "PRIMARY KEY (tag_id, recipe_id)",
+                         "FOREIGN KEY (tag_id) REFERENCES tags(ID)",
+                         "FOREIGN KEY (recipe_id) REFERENCES recipes(ID)",
+                         sep = ", "),
+                   ")")
+    rs <- dbSendQuery(db, query)
+    dbClearResults(rs)
 }
 
 onStop(function() {

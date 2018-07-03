@@ -159,7 +159,8 @@ function(input, output, session) {
                    acl = "public-read")
         url <- paste0("https://s3.eu-west-3.amazonaws.com/succotash-shiny/",
                       filename)
-        df <- data.table(ID = max(values$recipes$ID, 0) + 1,
+        recipe_id <- max(values$recipes$ID, 0) + 1
+        df <- data.table(ID = recipe_id,
                          title = input$new_title,
                          prep_time = input$new_prep_time,
                          yield = input$new_yield,
@@ -169,17 +170,30 @@ function(input, output, session) {
         values$recipes <- rbind(values$recipes, df)
         dbWriteTable(db, name = "recipes", value = df,
                      append = TRUE)
+        browser()
+        df2 <- data.table(tag_id = values$tags[tag %in% input$new_tags]$ID,
+                          recipe_id = recipe_id)
+        dbWriteTable(db, name = "tags_recipes", value = df2,
+                     append = TRUE)
     })
 
     # DELETE RECIPE
     observeEvent(input$del_recipe, {
+        browser()
         selected_row <- as.numeric(strsplit(input$del_recipe, "_")[[1]][3])
+        # Remove picture on S3
         s3_filename <- basename(values$recipes[selected_row]$picture)
         delete_object(s3_filename,
                       bucket = "succotash-shiny")
+        # Remove entry in recipes
+        selected_id <- values$recipes[selected_row]$ID
+        rs <- dbSendQuery(db, paste("DELETE FROM recipes WHERE ID =", selected_id))
+        dbClearResult(rs)
         values$recipes <- values$recipes[- selected_row]
-        dbWriteTable(db, name = "recipes", value = values$recipes,
-                     overwrite = TRUE)
+        # Remove entry in tags_recipes
+        rs <- dbSendQuery(db, paste("DELETE FROM tags_recipes WHERE recipe_id =",
+                                    selected_id))
+        dbClearResult(rs)
     })
 
 }
