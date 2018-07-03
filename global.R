@@ -19,7 +19,7 @@ if (!"tags" %in% db_tables) {
                          sep = ", "),
                    ")")
     rs <- dbSendQuery(db, query)
-    dbClearResults(rs)
+    dbClearResult(rs)
 }
 if (!"recipes" %in% db_tables) {
     query <- paste("CREATE TABLE recipes",
@@ -33,7 +33,7 @@ if (!"recipes" %in% db_tables) {
                          sep = ", "),
                    ")")
     rs <- dbSendQuery(db, query)
-    dbClearResults(rs)
+    dbClearResult(rs)
 }
 if (!"tags_recipes" %in% db_tables) {
     query <- paste("CREATE TABLE tags_recipes",
@@ -45,7 +45,7 @@ if (!"tags_recipes" %in% db_tables) {
                          sep = ", "),
                    ")")
     rs <- dbSendQuery(db, query)
-    dbClearResults(rs)
+    dbClearResult(rs)
 }
 
 onStop(function() {

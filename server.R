@@ -8,11 +8,39 @@ function(input, output, session) {
     # ------ REACTIVE ---------------------------------------------------------
 
     values <- reactiveValues(
-        tags = dbGetQuery(db, "SELECT * FROM tags") %>% data.table,
-        recipes = dbGetQuery(db, "SELECT * FROM recipes") %>% data.table
+        all_tags = dbGetQuery(db, "SELECT * FROM tags") %>% data.table,
+        all_recipes = dbGetQuery(db, "SELECT * FROM recipes") %>% data.table
     )
 
+    # FILTERED RECIPES
+    filtered_recipes <- reactive({
+        input$filters_submit
+        input$del_recipe
+        filters_tags <- isolate(input$filters_tags)
+        if (is.null(filters_tags)) {
+            filters_tags <- values$all_tags$ID
+        }
+        query <- paste("SELECT * FROM recipes",
+                       "WHERE recipes.ID IN (",
+                       paste("SELECT recipe_id FROM tags_recipes",
+                             "WHERE tag_id IN (",
+                             paste(filters_tags, collapse = ","),
+                             ")"),
+                       ")")
+        dbGetQuery(db, query) %>% data.table
+    })
+
     # ------ UI ---------------------------------------------------------------
+
+    # FILTERS FOR RECIPES
+    output$filters_recipes <- renderUI({
+        tagList(
+            selectInput("filters_tags", "TAGS",
+                        choices = setNames(values$all_tags$ID, values$all_tags$tag),
+                                           multiple = TRUE),
+            actionButton("filters_submit", "Filter")
+        )
+    })
 
     # ADD NEW RECIPE
     output$ui_new_recipe <- renderUI({
@@ -33,7 +61,7 @@ function(input, output, session) {
             ),
             div(style = "width: 40%; margin-right: 7px;", class = "inner",
                 selectInput("new_tags", "TAGS", multiple = TRUE,
-                            choices = sort(values$tags$tag))),
+                            choices = sort(values$all_tags$tag))),
             div(class = "inner", style = "width: 5%;",
                 actionLink("new_tags_add1",
                            label = img(src = "add.png",
@@ -70,7 +98,7 @@ function(input, output, session) {
     output$ui_edit_tags <- renderUI({
         box(title = "Edit Tags",
             selectInput("list_tags", "TAGS", multiple = TRUE,
-                        choices = values$tags$tag),
+                        choices = values$all_tags$tag),
             actionButton("remove_tags_submit", "Delete Tags")
         )
     })
@@ -92,27 +120,31 @@ function(input, output, session) {
 
     # SAVE NEW TAG
     observeEvent(input$new_tags_submit, {
-        if (!input$new_tags_input %in% values$tags$tag) {
-            values$tags <- rbind(values$tags,
-                                 data.frame(ID = max(values$tags$ID, 0) + 1,
-                                            tag = input$new_tags_input))
+        if (!input$new_tags_input %in% values$all_tags$tag) {
+            tag_id <- max(values$all_tags$ID, 0) + 1
+            values$max_tags_id <- values$max_tags_id + 1
+            df <- data.frame(ID = tag_id,
+                             tag = input$new_tags_input)
+            values$all_tags <- rbind(values$all_tags, df)
+            dbWriteTable(db, name = "tags", value = df, append = TRUE)
         }
-        dbWriteTable(db, name = "tags", value = values$tags,
-                     overwrite = TRUE)
     })
 
     # DELETE TAG
     observeEvent(input$remove_tags_submit, {
-        values$tags <- values$tags[!tag %in% input$list_tags]
-        dbWriteTable(db, name = "tags", value = values$tags,
-                     overwrite = TRUE)
+        tags_deleted <- values$all_tags[tag %in% input$list_tags]$ID
+        values$all_tags <- values$all_tags[!tag %in% input$list_tags]
+        rs <- dbSendQuery(db, paste("DELETE FROM tags WHERE ID IN (",
+                                    paste(tags_deleted, collapse = ","),
+                                    ")"))
+        dbClearResult(rs)
     })
 
     # ------ RECIPES ----------------------------------------------------------
 
     # DISPLAY RECIPES TABLE
     output$table_recipes <- DT::renderDataTable({
-        dt <- values$recipes[, .(title, prep_time, yield, delete = ID)]
+        dt <- req(filtered_recipes())[, .(title, prep_time, yield, delete = ID)]
         inputs <- character(nrow(dt))
         for (i in seq_len(nrow(dt))) {
             inputs[i] <- actionButton(
@@ -137,7 +169,7 @@ function(input, output, session) {
 
     # DISPLAY RECIPE DETAILS
     output$recipe <- renderUI({
-        recipes <- req(values$recipes)[req(input$table_recipes_rows_selected)]
+        recipes <- req(filtered_recipes())[req(input$table_recipes_rows_selected)]
         tagList(
             h1(recipes$title),
             p(strong("Preparation Time:"), recipes$prep_time),
@@ -160,7 +192,7 @@ function(input, output, session) {
                    acl = "public-read")
         url <- paste0("https://s3.eu-west-3.amazonaws.com/succotash-shiny/",
                       filename)
-        recipe_id <- max(values$recipes$ID, 0) + 1
+        recipe_id <- max(values$all_recipes$ID, 0) + 1
         df <- data.table(ID = recipe_id,
                          title = input$new_title,
                          prep_time = input$new_prep_time,
@@ -168,10 +200,10 @@ function(input, output, session) {
                          ingredients = input$new_ingredients,
                          instructions = input$new_instructions,
                          picture = url)
-        values$recipes <- rbind(values$recipes, df)
+        values$all_recipes <- rbind(values$all_recipes, df)
         dbWriteTable(db, name = "recipes", value = df,
                      append = TRUE)
-        df2 <- data.table(tag_id = values$tags[tag %in% input$new_tags]$ID,
+        df2 <- data.table(tag_id = values$all_tags[tag %in% input$new_tags]$ID,
                           recipe_id = recipe_id)
         dbWriteTable(db, name = "tags_recipes", value = df2,
                      append = TRUE)
@@ -180,14 +212,13 @@ function(input, output, session) {
 
     # DELETE RECIPE
     observeEvent(input$del_recipe, {
-        browser()
         selected_row <- as.numeric(strsplit(input$del_recipe, "_")[[1]][3])
         # Remove picture on S3
-        s3_filename <- basename(values$recipes[selected_row]$picture)
+        s3_filename <- basename(filtered_recipes()[selected_row]$picture)
         delete_object(s3_filename,
                       bucket = "succotash-shiny")
         # Remove entry in recipes
-        selected_id <- values$recipes[selected_row]$ID
+        selected_id <- filtered_recipes()[selected_row]$ID
         rs <- dbSendQuery(db, paste("DELETE FROM recipes WHERE ID =", selected_id))
         dbClearResult(rs)
         values$recipes <- values$recipes[- selected_row]

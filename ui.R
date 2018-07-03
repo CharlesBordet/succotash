@@ -34,10 +34,19 @@ dashboardPage(
         tabItems(
             tabItem(tabName = "menu_recipes",
                     fluidRow(
-                        column(width = 12,
+                        column(width = 9,
                                box(title = "Recipes",
                                    width = NULL,
-                                   DT::dataTableOutput("table_recipes")),
+                                   DT::dataTableOutput("table_recipes"))
+                        ),
+                        column(width = 3,
+                               box(title = "Filters",
+                                   width = NULL,
+                                   uiOutput("filters_recipes"))
+                        )
+                    ),
+                    fluidRow(
+                        column(width = 12,
                                box(width = NULL,
                                    uiOutput("recipe"))
                         )
