@@ -3,6 +3,7 @@ function(input, output, session) {
 
     library(data.table)
     library(magrittr)
+    library(DT)
 
     # ------ REACTIVE ---------------------------------------------------------
 
@@ -108,9 +109,37 @@ function(input, output, session) {
 
     # ------ RECIPES ----------------------------------------------------------
 
+    # DISPLAY RECIPES TABLE
+    output$table_recipes <- renderDataTable({
+        dt <- values$recipes[, .(title, prep_time, yield)]
+        datatable(dt,
+                  rownames = NULL,
+                  colnames = c("Title", "Preparation time", "Yield"),
+                  selection = "single",
+                  options = list(
+                      lengthMenu = list(c(10, 25, 50, 100, -1),
+                                        c("10", "25", "50", "100", "All")),
+                      pageLength = 10,
+                      searching = FALSE))
+    })
+
+    # DISPLAY RECIPE DETAILS
+    output$recipe <- renderUI({
+        recipes <- req(values$recipes)[req(input$table_recipes_rows_selected)]
+        tagList(
+            h1(recipes$title),
+            p(strong("Preparation Time:"), recipes$prep_time),
+            p(strong("Yield:"), recipes$yield),
+            img(src = recipes$picture, width = 600),
+            h3("INGREDIENTS"),
+            tags$ul(lapply(strsplit(recipes$ingredients, "\\n")[[1]], tags$li)),
+            h3("INSTRUCTIONS"),
+            tags$ol(lapply(strsplit(recipes$instructions, "\\n")[[1]], tags$li))
+        )
+    })
+
     # SAVE NEW RECIPE
     observeEvent(input$new_submit, {
-        browser()
         filename <- paste0(gsub("-| |:", "", substr(Sys.time(), 1, 20)),
                            "-", input$new_picture$name)
         put_object(input$new_picture$datapath,
