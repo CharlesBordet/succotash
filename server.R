@@ -125,7 +125,7 @@ function(input, output, session) {
 
     # DISPLAY RECIPE DETAILS
     output$recipe <- renderUI({
-        recipes <- req(values$recipes)[req(input$table_recipes_row_last_clicked)]
+        recipes <- req(values$recipes)[req(input$table_recipes_rows_selected)]
         tagList(
             h1(recipes$title),
             p(strong("Preparation Time:"), recipes$prep_time),
