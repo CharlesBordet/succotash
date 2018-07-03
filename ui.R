@@ -32,17 +32,21 @@ dashboardPage(
 
         tabItems(
             tabItem(tabName = "menu_recipes",
-                    fluidRow(uiOutput("ui_table_recipes"))
-            )
-        ),
+                    fluidRow(
+                        column(width = 12,
+                               box(title = "Recipes",
+                                   width = NULL,
+                                   dataTableOutput("table_recipes")),
+                               box(width = NULL,
+                                   uiOutput("recipe"))
+                        )
+                    )
+            ),
 
-        tabItems(
             tabItem(tabName = "menu_add_recipe",
                     fluidRow(uiOutput("ui_new_recipe"))
-            )
-        ),
+            ),
 
-        tabItems(
             tabItem(tabName = "admin_tags",
                     fluidRow(uiOutput("ui_edit_tags"))
             )

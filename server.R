@@ -14,13 +14,6 @@ function(input, output, session) {
 
     # ------ UI ---------------------------------------------------------------
 
-    # TABLE RECIPES
-    output$ui_table_recipes <- renderUI({
-        box(title = "Recipes",
-            width = 12,
-            dataTableOutput("table_recipes"))
-    })
-
     # ADD NEW RECIPE
     output$ui_new_recipe <- renderUI({
 
@@ -128,6 +121,21 @@ function(input, output, session) {
                                         c("10", "25", "50", "100", "All")),
                       pageLength = 10,
                       searching = FALSE))
+    })
+
+    # DISPLAY RECIPE DETAILS
+    output$recipe <- renderUI({
+        recipes <- req(values$recipes)[req(input$table_recipes_row_last_clicked)]
+        tagList(
+            h1(recipes$title),
+            p(strong("Preparation Time:"), recipes$prep_time),
+            p(strong("Yield:"), recipes$yield),
+            img(src = recipes$picture, width = 600),
+            h3("INGREDIENTS"),
+            tags$ul(lapply(strsplit(recipes$ingredients, "\\n")[[1]], tags$li)),
+            h3("INSTRUCTIONS"),
+            tags$ol(lapply(strsplit(recipes$instructions, "\\n")[[1]], tags$li))
+        )
     })
 
     # SAVE NEW RECIPE
