@@ -111,11 +111,22 @@ function(input, output, session) {
 
     # DISPLAY RECIPES TABLE
     output$table_recipes <- renderDataTable({
-        dt <- values$recipes[, .(title, prep_time, yield)]
+        dt <- values$recipes[, .(title, prep_time, yield, delete = ID)]
+        inputs <- character(nrow(dt))
+        for (i in seq_len(nrow(dt))) {
+            inputs[i] <- actionButton(
+                paste0("del_recipe_", i),
+                label = img(src = "cross_small.png"),
+                onclick = "Shiny.onInputChange(\"del_recipe\", this.id)") %>%
+                as.character
+        }
+        dt[, delete := inputs]
+
         datatable(dt,
                   rownames = NULL,
-                  colnames = c("Title", "Preparation time", "Yield"),
+                  colnames = c("Title", "Preparation time", "Yield", "Delete"),
                   selection = "single",
+                  escape = FALSE,
                   options = list(
                       lengthMenu = list(c(10, 25, 50, 100, -1),
                                         c("10", "25", "50", "100", "All")),
@@ -158,7 +169,17 @@ function(input, output, session) {
         values$recipes <- rbind(values$recipes, df)
         dbWriteTable(db, name = "recipes", value = df,
                      append = TRUE)
+    })
 
+    # DELETE RECIPE
+    observeEvent(input$del_recipe, {
+        selected_row <- as.numeric(strsplit(input$del_recipe, "_")[[1]][3])
+        s3_filename <- basename(values$recipes[selected_row]$picture)
+        delete_object(s3_filename,
+                      bucket = "succotash-shiny")
+        values$recipes <- values$recipes[- selected_row]
+        dbWriteTable(db, name = "recipes", value = values$recipes,
+                     overwrite = TRUE)
     })
 
 }
