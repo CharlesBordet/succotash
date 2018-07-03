@@ -36,7 +36,7 @@ dashboardPage(
                         column(width = 12,
                                box(title = "Recipes",
                                    width = NULL,
-                                   dataTableOutput("table_recipes")),
+                                   DT::dataTableOutput("table_recipes")),
                                box(width = NULL,
                                    uiOutput("recipe"))
                         )

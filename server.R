@@ -110,7 +110,7 @@ function(input, output, session) {
     # ------ RECIPES ----------------------------------------------------------
 
     # DISPLAY RECIPES TABLE
-    output$table_recipes <- renderDataTable({
+    output$table_recipes <- DT::renderDataTable({
         dt <- values$recipes[, .(title, prep_time, yield, delete = ID)]
         inputs <- character(nrow(dt))
         for (i in seq_len(nrow(dt))) {
