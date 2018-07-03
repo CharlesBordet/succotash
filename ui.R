@@ -10,6 +10,7 @@ dashboardPage(
 
     dashboardSidebar(
         sidebarMenu(
+            id = "tabs",
             menuItem("Recipes", tabName = "menu_recipes",
                      icon = icon("book")),
             menuItem("Add new recipe", tabName = "menu_add_recipe",

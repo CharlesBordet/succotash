@@ -17,6 +17,7 @@ function(input, output, session) {
     # ADD NEW RECIPE
     output$ui_new_recipe <- renderUI({
 
+        input$new_submit
         box(title = "New Recipe",
             textInput("new_title", "TITLE",
                       placeholder = "Title"),
@@ -170,11 +171,11 @@ function(input, output, session) {
         values$recipes <- rbind(values$recipes, df)
         dbWriteTable(db, name = "recipes", value = df,
                      append = TRUE)
-        browser()
         df2 <- data.table(tag_id = values$tags[tag %in% input$new_tags]$ID,
                           recipe_id = recipe_id)
         dbWriteTable(db, name = "tags_recipes", value = df2,
                      append = TRUE)
+        updateTabItems(session, "tabs", "menu_recipes")
     })
 
     # DELETE RECIPE
