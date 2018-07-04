@@ -59,6 +59,15 @@ dashboardPage(
 
             tabItem(tabName = "admin_tags",
                     fluidRow(uiOutput("ui_edit_tags"))
+            ),
+
+            tabItem(tabName = "admin_ingredients",
+                    fluidRow(
+                        column(width = 12,
+                               uiOutput("ui_add_ingredient"),
+                               uiOutput("ui_list_ingredients")
+                        )
+                    )
             )
         )
 

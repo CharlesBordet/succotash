@@ -9,7 +9,9 @@ function(input, output, session) {
 
     values <- reactiveValues(
         all_tags = dbGetQuery(db, "SELECT * FROM tags") %>% data.table,
-        all_recipes = dbGetQuery(db, "SELECT * FROM recipes") %>% data.table
+        all_recipes = dbGetQuery(db, "SELECT * FROM recipes") %>% data.table,
+        all_ingredients = dbGetQuery(db, "SELECT * FROM ingredients") %>%
+            data.table
     )
 
     # FILTERED RECIPES
@@ -89,6 +91,45 @@ function(input, output, session) {
                       accept = c("image/jpeg", "image/png")),
             actionButton("new_submit", label = "Save", width = "100%",
                          style = "background: lightgreen")
+        )
+    })
+
+    # ADD INGREDIENT
+    output$ui_add_ingredient <- renderUI({
+        tagList(
+            fluidRow(
+                column(width = 4,
+                       textInput("add_ingredient_name", "NAME",
+                                 placeholder = "Tomato", width = "100%")),
+                column(width = 4,
+                       textInput("add_ingredient_weight", "BASE WEIGHT (g)",
+                                 placeholder = "60", width = "100%")),
+                column(width = 4,
+                       textInput("add_ingredient_calories", "CALORIES (kcal per 100g)",
+                                 placeholder = "18", width = "100%"))
+            ),
+            fluidRow(
+                column(width = 4,
+                       textInput("add_ingredient_carbs", "CARBOHYDRATES (g per 100g)",
+                                 placeholder = "3.9", width = "100%")),
+                column(width = 4,
+                       textInput("add_ingredient_protein", "PROTEIN (g per 100g)",
+                                 placeholder = "0.9", width = "100%")),
+                column(width = 4,
+                       textInput("add_ingredient_fat", "FAT (g per 100g)",
+                                 placeholder = "0.2", width = "100%"))
+            ),
+            actionButton("add_ingredient_submit", label = "Save", width = "100%",
+                         style = "background: lightgreen"),
+            br(), br()
+        )
+    })
+
+    # DISPLAY INGREDIENTS
+    output$ui_list_ingredients <- renderUI({
+        box(title = "Ingredients",
+            width = NULL,
+            DT::dataTableOutput("list_ingredients")
         )
     })
 
@@ -221,11 +262,66 @@ function(input, output, session) {
         selected_id <- filtered_recipes()[selected_row]$ID
         rs <- dbSendQuery(db, paste("DELETE FROM recipes WHERE ID =", selected_id))
         dbClearResult(rs)
-        values$recipes <- values$recipes[- selected_row]
+        values$all_recipes <- values$all_recipes[- selected_row]
         # Remove entry in tags_recipes
         rs <- dbSendQuery(db, paste("DELETE FROM tags_recipes WHERE recipe_id =",
                                     selected_id))
         dbClearResult(rs)
     })
 
+    # ------ INGREDIENTS ------------------------------------------------------
+
+    # LIST OF INGREDIENTS
+    output$list_ingredients <- DT::renderDataTable({
+        # browser()
+        dt <- values$all_ingredients[, .(name, weight, calories, carbs,
+                                         protein, fat, delete = ID)]
+        inputs <- character(nrow(dt))
+        for (i in seq_len(nrow(dt))) {
+            inputs[i] <- actionButton(
+                paste0("del_ingredient_", i),
+                label = img(src = "cross_small.png"),
+                onclick = "Shiny.onInputChange(\"del_ingredient\", this.id)") %>%
+                as.character
+        }
+        dt[, delete := inputs]
+
+        datatable(dt,
+                  rownames = NULL,
+                  colnames = c("Name", "Base weight", "Calories", "Carbs",
+                               "Protein", "Fat", "Delete"),
+                  selection = "single",
+                  escape = FALSE,
+                  options = list(
+                      lengthMenu = list(c(10, 25, 50, 100, -1),
+                                        c("10", "25", "50", "100", "All")),
+                      pageLength = 10,
+                      searching = FALSE))
+    })
+
+    # ADD NEW INGREDIENT
+    observeEvent(input$add_ingredient_submit, {
+        browser()
+        df <- data.table(
+            ID = max(values$all_ingredients$ID, 0) + 1,
+            name = input$add_ingredient_name,
+            weight = input$add_ingredient_weight,
+            calories = input$add_ingredient_calories,
+            carbs = input$add_ingredient_carbs,
+            protein = input$add_ingredient_protein,
+            fat = input$add_ingredient_fat
+        )
+        values$all_ingredients <- rbind(values$all_ingredients, df)
+        dbWriteTable(db, name = "ingredients", value = df,
+                     append = TRUE)
+    })
+
+    # DELETE INGREDIENT
+    observeEvent(input$del_ingredient, {
+        selected_row <- as.numeric(strsplit(input$del_ingredient, "_")[[1]][3])
+        selected_id <- values$all_ingredients[selected_row]$ID
+        rs <- dbSendQuery(db, paste("DELETE FROM ingredients WHERE ID =", selected_id))
+        dbClearResult(rs)
+        values$all_ingredients <- values$all_ingredients[- selected_row]
+    })
 }
