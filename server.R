@@ -11,8 +11,17 @@ function(input, output, session) {
         all_tags = dbGetQuery(db, "SELECT * FROM tags") %>% data.table,
         all_recipes = dbGetQuery(db, "SELECT * FROM recipes") %>% data.table,
         all_ingredients = dbGetQuery(db, "SELECT * FROM ingredients") %>%
-            data.table
+            data.table,
+        ingredients_nb = 5
     )
+
+    # INGREDIENTS NUMBER
+    observeEvent(input$new_ingredient_add, {
+        values$ingredients_nb <- values$ingredients_nb + 1
+    })
+    observeEvent(input$new_submit, {
+        values$ingredients_nb <- 5
+    })
 
     # FILTERED RECIPES
     filtered_recipes <- reactive({
@@ -42,6 +51,26 @@ function(input, output, session) {
                                            multiple = TRUE),
             actionButton("filters_submit", "Filter")
         )
+    })
+
+    # INGREDIENTS UI
+    ingredients_ui <- reactive({
+        lapply(1:values$ingredients_nb, function(i) {
+            if (i == 1) {
+                label1 <- "INGREDIENTS"; label2 <- "QUANTITY"
+            } else {
+                label1 <- NULL; label2 <- NULL
+            }
+            fluidRow(
+                column(width = 6,
+                       selectInput(paste0("new_ingredient_", i),
+                                   label = label1,
+                                   choices = sort(values$all_ingredients$name))),
+                column(width = 6,
+                       textInput(paste0("new_ingredient_qt_", i),
+                                 label = label2, placeholder = "3 or 60g"))
+            )
+        })
     })
 
     # ADD NEW RECIPE
@@ -78,11 +107,9 @@ function(input, output, session) {
                                  placeholder = "Enter new tag"))),
             div(class = "inner", style = "width: 5%; padding-top: 5px;",
                 hidden(actionButton("new_tags_submit", label = "Add"))),
-            textAreaInput("new_ingredients", label = "INGREDIENTS",
-                          placeholder = paste("Enter one ingredient per line:",
-                                              "3 tomatoes",
-                                              "50g butter", sep = "\n"),
-                          resize = "vertical", rows = 6),
+            ingredients_ui(),
+            actionButton("new_ingredient_add", label = "Add an ingredient"),
+            br(), br(),
             textAreaInput("new_instructions", label = "INSTRUCTIONS",
                           placeholder = paste("Enter instructions steps.",
                                               "One step per line"),
@@ -301,15 +328,14 @@ function(input, output, session) {
 
     # ADD NEW INGREDIENT
     observeEvent(input$add_ingredient_submit, {
-        browser()
         df <- data.table(
             ID = max(values$all_ingredients$ID, 0) + 1,
             name = input$add_ingredient_name,
-            weight = input$add_ingredient_weight,
-            calories = input$add_ingredient_calories,
-            carbs = input$add_ingredient_carbs,
-            protein = input$add_ingredient_protein,
-            fat = input$add_ingredient_fat
+            weight = as.numeric(input$add_ingredient_weight),
+            calories = as.numeric(input$add_ingredient_calories),
+            carbs = as.numeric(input$add_ingredient_carbs),
+            protein = as.numeric(input$add_ingredient_protein),
+            fat = as.numeric(input$add_ingredient_fat)
         )
         values$all_ingredients <- rbind(values$all_ingredients, df)
         dbWriteTable(db, name = "ingredients", value = df,

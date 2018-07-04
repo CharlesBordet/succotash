@@ -50,7 +50,7 @@ if (!"ingredients" %in% db_tables) {
     query <- paste("CREATE TABLE ingredients",
                    paste("(ID INTEGER NOT NULL PRIMARY KEY",
                          "name VARCHAR(255) NOT NULL",
-                         "weight REAL NOT NULL",
+                         "weight REAL",
                          "calories REAL",
                          "carbs REAL",
                          "protein REAL",
