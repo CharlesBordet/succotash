@@ -26,7 +26,6 @@ if (!"recipes" %in% db_tables) {
                          "title VARCHAR(255)",
                          "prep_time VARCHAR(255)",
                          "yield VARCHAR(255)",
-                         "ingredients TEXT",
                          "instructions TEXT",
                          "picture VARCHAR(255)",
                          sep = ", "),
@@ -55,6 +54,19 @@ if (!"ingredients" %in% db_tables) {
                          "carbs REAL",
                          "protein REAL",
                          "fat REAL",
+                         sep = ", "),
+                   ")")
+    rs <- dbSendQuery(db, query)
+    dbClearResult(rs)
+}
+if (!"ingredients_recipes" %in% db_tables) {
+    query <- paste("CREATE TABLE ingredients_recipes",
+                   paste("(ingredient_id INTEGER NOT NULL",
+                         "recipe_id INTEGER NOT NULL",
+                         "quantity VARCHAR(255)",
+                         "PRIMARY KEY (ingredient_id, recipe_id)",
+                         "FOREIGN KEY (ingredient_id) REFERENCES ingredients(ID)",
+                         "FOREIGN KEY (recipe_id) REFERENCES recipes(ID)",
                          sep = ", "),
                    ")")
     rs <- dbSendQuery(db, query)

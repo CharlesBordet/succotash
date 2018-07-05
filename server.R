@@ -15,7 +15,7 @@ function(input, output, session) {
         ingredients_nb = 5
     )
 
-    # INGREDIENTS NUMBER
+    # INGREDIENTS NUMBER IN THE RECIPE CREATOR
     observeEvent(input$new_ingredient_add, {
         values$ingredients_nb <- values$ingredients_nb + 1
     })
@@ -55,6 +55,8 @@ function(input, output, session) {
 
     # INGREDIENTS UI
     ingredients_ui <- reactive({
+        ingredients <- values$all_ingredients
+        setorder(ingredients, name)
         lapply(1:values$ingredients_nb, function(i) {
             if (i == 1) {
                 label1 <- "INGREDIENTS"; label2 <- "QUANTITY"
@@ -65,7 +67,8 @@ function(input, output, session) {
                 column(width = 6,
                        selectInput(paste0("new_ingredient_", i),
                                    label = label1,
-                                   choices = sort(values$all_ingredients$name))),
+                                   choices = setNames(ingredients$ID,
+                                                      ingredients$name))),
                 column(width = 6,
                        textInput(paste0("new_ingredient_qt_", i),
                                  label = label2, placeholder = "3 or 60g"))
@@ -252,39 +255,61 @@ function(input, output, session) {
 
     # SAVE NEW RECIPE
     observeEvent(input$new_submit, {
-        filename <- paste0(gsub("-| |:", "", substr(Sys.time(), 1, 20)),
-                           "-", input$new_picture$name)
-        put_object(input$new_picture$datapath,
-                   filename,
-                   bucket = "succotash-shiny",
-                   acl = "public-read")
-        url <- paste0("https://s3.eu-west-3.amazonaws.com/succotash-shiny/",
-                      filename)
+        browser()
+        # Save picture on S3
+        if (!is.null(input$new_picture)) {
+            filename <- paste0(gsub("-| |:", "", substr(Sys.time(), 1, 20)),
+                               "-", input$new_picture$name)
+            put_object(input$new_picture$datapath,
+                       filename,
+                       bucket = "succotash-shiny",
+                       acl = "public-read")
+            url <- paste0("https://s3.eu-west-3.amazonaws.com/succotash-shiny/",
+                          filename)
+        } else {
+            url <- NA
+        }
+        # Get ingredients
         recipe_id <- max(values$all_recipes$ID, 0) + 1
+        ingredient_ids <- c()
+        ingredient_qt <- c()
+        i <- 1
+        while (!is.null(input[[paste0("new_ingredient_", i)]])) {
+            ingredient_ids <- c(ingredient_ids, input[[paste0("new_ingredient_", i)]])
+            ingredient_qt <- c(ingredient_qt, input[[paste0("new_ingredient_qt_", i)]])
+            i <- i + 1
+        }
+        # Save data in recipes table
         df <- data.table(ID = recipe_id,
                          title = input$new_title,
                          prep_time = input$new_prep_time,
                          yield = input$new_yield,
-                         ingredients = input$new_ingredients,
                          instructions = input$new_instructions,
                          picture = url)
         values$all_recipes <- rbind(values$all_recipes, df)
-        dbWriteTable(db, name = "recipes", value = df,
-                     append = TRUE)
+        dbWriteTable(db, name = "recipes", value = df, append = TRUE)
+        # Save data in tags table
         df2 <- data.table(tag_id = values$all_tags[tag %in% input$new_tags]$ID,
                           recipe_id = recipe_id)
-        dbWriteTable(db, name = "tags_recipes", value = df2,
-                     append = TRUE)
+        dbWriteTable(db, name = "tags_recipes", value = df2, append = TRUE)
+        # Save data in ingredients table
+        df3 <- data.table(ingredient_id = ingredient_ids,
+                          recipe_id = recipe_id,
+                          quantity = ingredient_qt)
+        dbWriteTable(db, name = "ingredients_recipes", value = df3, append = TRUE)
+        # Redirect to recipes list
         updateTabItems(session, "tabs", "menu_recipes")
     })
 
     # DELETE RECIPE
     observeEvent(input$del_recipe, {
+        browser()
         selected_row <- as.numeric(strsplit(input$del_recipe, "_")[[1]][3])
         # Remove picture on S3
         s3_filename <- basename(filtered_recipes()[selected_row]$picture)
-        delete_object(s3_filename,
-                      bucket = "succotash-shiny")
+        if (!is.na(s3_filename)) {
+            delete_object(s3_filename, bucket = "succotash-shiny")
+        }
         # Remove entry in recipes
         selected_id <- filtered_recipes()[selected_row]$ID
         rs <- dbSendQuery(db, paste("DELETE FROM recipes WHERE ID =", selected_id))
@@ -292,6 +317,10 @@ function(input, output, session) {
         values$all_recipes <- values$all_recipes[- selected_row]
         # Remove entry in tags_recipes
         rs <- dbSendQuery(db, paste("DELETE FROM tags_recipes WHERE recipe_id =",
+                                    selected_id))
+        dbClearResult(rs)
+        # Remove entry in ingredients_recipes
+        rs <- dbSendQuery(db, paste("DELETE FROM ingredients_recipes WHERE recipe_id =",
                                     selected_id))
         dbClearResult(rs)
     })
